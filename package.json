@@ -1,0 +1,9 @@
+{
+  "name": "serverless-framework-cloud",
+  "version": "1.0.0",
+  "description": "Default Serverless Cloud service",
+  "main": "src/index.ts",
+  "devDependencies": {
+    "node-fetch": "2.6.1"
+  }
+}
