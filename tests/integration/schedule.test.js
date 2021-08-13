@@ -1,27 +1,10 @@
-const { schedule, data } = require("@serverless/cloud");
+const { schedule } = require("@serverless/cloud");
 
 const log = jest.spyOn(console, "log");
 
-beforeAll(async () => {
-  await data.set(
-    "todo:456",
-    {
-      id: "456",
-      name: "Overdue item",
-      status: "incomplete",
-    },
-    {
-      label1: "incomplete:1900-06-30",
-    }
-  );
-});
+test("fetches from github", async () => {
+  await schedule.every("3 minutes").invoke();
 
-afterAll(async () => {
-  await data.remove("todo:456");
-});
-
-test("alerts on overdue items", async () => {
-  await schedule.every("60 minutes").invoke();
-
-  expect(log).toBeCalledWith("ALERT: 'Overdue item' is overdue!!!");
+  expect(log).toBeCalledWith("Fetching stars for the Framework repo from GitHub");
+  expect(log).toBeCalledWith("Fetching stars for the Cloud repo from GitHub");
 });
