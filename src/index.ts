@@ -1,3 +1,4 @@
+// @ts-ignore
 import { api, data, schedule } from "@serverless/cloud";
 import type { Err, StarResponse } from "./types";
 import { Product } from "./types";
@@ -9,18 +10,15 @@ const acquireRepoPath = (product: Product): string => {
   switch (product) {
     case Product.FRAMEWORK:
       return "serverless/serverless";
-      break;
     case Product.CLOUD:
       return "serverless/cloud";
-      break;
     default:
       throw "Unknown Product";
-      break;
   };
 };
 
 // Makes HTTP request to GitHub client API to acquire repo data
-const acquireStars = async (product: Product): any => {
+const acquireStars = async (product: Product): Promise<any> => {
   const repoPath = acquireRepoPath(product);
   const endpoint = `https://api.github.com/repos/${repoPath}`;
 
@@ -45,7 +43,7 @@ const acquireStars = async (product: Product): any => {
 const findErrs = (d?: any): Err[] => {
   return Object.keys(Errs).reduce((a, c) => {
     const err = Errs[c];
-    if (err.valid(d)) a.push({ status: c.status, message: err.message });
+    if (err.valid(d)) a.push({ status: err.status, message: err.message });
     return a;
   }, []);
 };
@@ -62,7 +60,7 @@ const resolveErrs = (errs?: Err[]): StarResponse => {
     return { ok: false, status: 500, err: errsStripped };
   }
 
-  return { ok: false, ...errs[0] };
+  return { ok: false, status: 500, ...errs[0] };
 };
 
 // Packages HTTP response for client-side JSON parsing
@@ -75,7 +73,7 @@ const responseObj = (d?: any): StarResponse => {
 };
 
 // Fetches both Framework and Cloud repo data and stores response, if valid
-const acquireAllStars = async (): void => {
+const acquireAllStars = async (): Promise<void> => {
   console.log("Fetching stars for the Framework repo from GitHub");
   console.log("Fetching stars for the Cloud repo from GitHub");
 
@@ -89,6 +87,16 @@ const acquireAllStars = async (): void => {
 // GitHub is rate-limited without OAuth; limits acquisition and caches
 schedule.every("3 minutes", async () => {
   await acquireAllStars();
+});
+
+api.use(async (req, res, next) => {
+  const initialized = await data.get('initialized');
+  if (!initialized) {
+    // Bootstraps data when initialially running the application
+    await acquireAllStars();
+    await data.set('initialized', true);
+  }
+  await next();
 });
 
 // API end-point for retrieving Framework GitHub repo star metadata
@@ -106,6 +114,3 @@ api.get("/cloud/stars", async (req, res) => {
 
   res.json(response);
 });
-
-// Bootstraps data when initialially running the application
-acquireAllStars();
